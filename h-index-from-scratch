@@ -1,0 +1,98 @@
+#Start session ----
+rm(list=ls())
+library(tidyverse)
+
+# 1 - Import data ----
+
+data = read.table("https://meek-parfait-60672c.netlify.app/docs/High_tech_Employment_Eurostat.txt",
+                  header=TRUE)
+colnames(data)[3] ="employment"
+
+# 2 - Keep regional observations only ----
+
+#keep only the observations whose number of letters of "geo" is equal to 4,
+#since this corresponds to the NUTS2 observations 
+data = subset(data, nchar(data$geo)==4)
+
+#remove NAs
+data = drop_na(data)
+
+# 3 - Compute Herfindahl index ----
+
+#empty feature
+data$percent = NA
+
+#test
+data2 = data[1,]
+
+#keep the first 2 letters
+region_name = unique(str_sub(data$geo, 1, 2))
+
+#vector of the years concerned
+year_name = unique(data$year)
+
+#calculate percentage by region and year
+for (region in region_name){
+  for (annees in year_name){
+    sbt = filter(data, data$year==annees, str_sub(data$geo, 1, 2)==region)
+    if (nrow(sbt) != 0){
+      for (i in 1:nrow(sbt)){
+        sbt$percent[i] = round(sbt$employment[i]/sum(sbt$employment)*100, digits = 2)
+      }
+      data2 = rbind(data2, sbt)
+    }
+  }
+}
+data = data2[-c(1),]
+
+
+
+#empty feature
+data$herfin = NA
+
+#test
+data2 = data[1,]
+
+#calculate h-index
+for (region in region_name){
+  for (annees in year_name){
+    sbt = filter(data, data$year==annees, str_sub(data$geo, 1, 2)==region)
+    if (nrow(sbt) != 0){
+      for (i in 1:nrow(sbt)){
+        sbt$herfin[i] = round(sum(((sbt$percent)/100)**2), digits=2)
+      }
+      data2 = rbind(data2, sbt)
+    }
+  }
+}
+data = data2[-c(1),]
+
+
+remove(data2, sbt, annees, i, region, region_name, year_name)
+# 4 - Create plot for 5 countrys ----
+EU5 = c("DE", "BE", "IT", "FR", "NL")
+
+#select for each country the right obs
+FR = filter(data, str_sub(data$geo, 1, 2)=='FR')
+DE = filter(data, str_sub(data$geo, 1, 2)=='DE')
+BE = filter(data, str_sub(data$geo, 1, 2)=='BE')
+IT = filter(data, str_sub(data$geo, 1, 2)=='IT')
+NL = filter(data, str_sub(data$geo, 1, 2)=='NL')
+
+#ploting the h-index throught time
+par(mfrow = c(2,3))
+#par(mfrow = c(1,1Plot ))
+plot(FR$year, FR$herfin, ylim = c(0, 0.3),
+     main="France", ylab = "H-index", xlab = "From 1999 to 2008", col="blue")
+plot(DE$year, DE$herfin, ylim = c(0, 0.3),
+     main="Germany", ylab = "H-index", xlab = "From 1999 to 2008", col="green")
+plot(BE$year, BE$herfin, ylim = c(0, 0.3),
+     main="United Kingdom", ylab = "H-index", xlab = "From 1999 to 2008", col="red")
+plot(IT$year, IT$herfin, ylim = c(0, 0.3),
+     main="Italy", ylab = "H-index", xlab = "From 1999 to 2008", col="yellow")
+plot(NL$year, NL$herfin, ylim = c(0, 0.3),
+     main="Spain", ylab = "H-index", xlab = "From 1999 to 2008", col="grey")
+
+
+
+
