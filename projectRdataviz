@@ -1,0 +1,165 @@
+---
+title: "Représentation de données et statistiques multidimensionnelles : Exercice 3 TD1"
+author: "Joseph Barbier--Darnal"
+output:
+  html_document:
+    df_print: paged
+---
+
+<br>
+
+# Consigne à partir de la base de données gapminder :
+
+> *A rendre seul ou en binôme pour une date limite qui sera indiquée sur Moodle.*
+
+> *Proposez en 2 ou 3 pages, une analyse statistique avec quelques chiffres importants et les graphiques adaptés portant sur l'évolution des indicateurs (espérance de vie, produit intérieur brut) entre 2 ou 3 dates (1957, 2007 par exemple). Essayer de manipuler en univarié et en bivarié des variables numériques et des variables qualitatives.*
+
+<br>
+
+## 1 - Préparation du jeu de données
+
+Nettoyage de l'environnement, appel des librairies utilisées et récupération du jeu de données.
+
+```{r start session, message=FALSE, warning=FALSE, results='hide'}
+rm(list=ls())
+library(dplyr)
+library(tidyverse)
+library(gtsummary)
+library(hrbrthemes)
+library(viridis)
+library(gapminder)
+library(ggplot2)
+library(ggpubr)
+```
+
+```{r create dataset}
+data = gapminder
+data$pop = (data$pop)/1000 #population will be in thousands
+str(data) #show features and data-type
+any(is.na(data)) #check if there are NAs
+```
+
+<br>
+
+## 2 - Objectif
+
+Dans notre cas, on décide de s'intéresser uniquement aux années suivantes : **1952, 1982 et 2007**.\
+Notre objectif principal sera d'explorer nos paramètres de manière *univariée*, *bivariée* ainsi que via l'utilisation de *graphiques*. Nous commençons par explorer notre jeu de données où chaque unité statistique représente un pays X à une date Y. Nous créons également un second dataset où chaque unité statistique sera un continent X à une date Y. Pour ce dataset, les valeurs des variables numériques seront la moyenne des pays du continent concerné.\
+
+```{r warning=FALSE}
+# select years
+data = data[data$year == 1952 | data$year == 1982 | data$year == 2007, ]
+
+# create a second data set where each statistical unit is the continent X at date Y
+data_continent = data %>% 
+  group_by(continent, year) %>%
+  mutate(lifexp_m = round(mean(lifeExp), 2),
+         gdp_m = round(mean(gdpPercap), 2),
+         pop_m = round(mean(pop), 2))
+
+data_continent = select(data_continent, -c(lifeExp, gdpPercap, pop, country)) #remove useless feature
+data_continent = distinct(data_continent) #remove all duplicates 
+```
+
+<br>
+
+Le jeu de données par pays par année
+
+```{r echo=FALSE, warning=FALSE}
+# show dataset
+head(data)
+```
+
+<br>
+
+Le jeu de données par continent par année
+
+```{r echo=FALSE, warning=FALSE}
+# show dataset
+head(data_continent)
+```
+
+<br>
+
+On décide d'utiliser la fonction `tbl_summary()` afin de calculer les premières statistiques descriptives de notre jeu de données (moyenne et écart-type) de façon univariée (colonne "Overall") et bivariée par rapport à chaque continent.
+
+```{r warning=FALSE}
+# print descriptive statistics for numerical features
+data %>%
+  ungroup() %>%
+  select(continent, lifeExp, pop, gdpPercap) %>%
+  tbl_summary(
+    by='continent',
+    statistic = list(all_continuous() ~ "{mean} ({sd})")) %>%
+  add_overall(last=TRUE)
+```
+
+<br>
+
+<br>
+
+## 3 - Quelques graphiques intéressants...
+
+#### Boxplot de l'espérance de vie par continent
+
+```{r echo=FALSE, fig.width=10, warning=FALSE}
+data %>%
+  ggplot(aes(x=continent, y=lifeExp, col=continent)) +
+    geom_boxplot() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    geom_jitter(color="black", size=0.4, alpha=0.9) +
+    theme_ipsum() +
+    theme(legend.position="none",
+          plot.title = element_text(size=11))
+```
+
+<br>
+
+#### Espérance de vie et PIB/habitant : évolution par pays et par continent
+
+Chaque continent a vu la moyenne de l'espérance de vie et son PIB/habitant de ses pays augmenter aux dates d'intérêt.
+
+```{r echo=FALSE, fig.width=10, warning=FALSE}
+plot1 = ggplot(data_continent, aes(x=year, y=lifexp_m, col=continent)) + geom_point(size=2.5)
+plot2 = ggplot(data_continent, aes(x=year, y=gdp_m, col=continent)) + geom_point(size=2.5)
+
+ggarrange(plot1, plot2, nrow = 1, common.legend = TRUE) 
+```
+
+<br>
+
+#### Relation entre l'espèrance de vie et le PIB par habitant
+
+Ce graphique nous montre une relation positive claire entre l'espérance de vie et le PIB par habitant.\
+**Attention :** la variable *PIB/habitant* est passée en logarithme. La relation n'est donc pas linéaire, contrairement à ce pourrai suggérer le graphique.
+
+```{r echo=FALSE, fig.width=10, warning=FALSE}
+plot1 = ggplot(data, aes(x=log(gdpPercap), y=lifeExp, col=continent)) + geom_point()
+plot2 = ggplot(data_continent, aes(x=log(gdp_m), y=lifexp_m, col=continent)) + geom_point(size=2.5)
+
+ggarrange(plot1, plot2, nrow = 1, common.legend = TRUE) 
+```
+
+<br>
+
+## 4 - Quelques outils de mesure de relation statistique...
+
+On peut s'intéresser au coefficient de corrélation de ces deux paramètres afin d'investiguer davantage leur relation. On conserve le PIB/habitant en logarithme afin d'utiliser le coefficient de corrélation linéaire de Pearson.
+
+La corrélation est ici très forte (r\>0.8) et largement significative (p\<0.001).
+
+```{r warning=FALSE}
+cor.test(data$lifeExp, log(data$gdpPercap), method = "pearson")
+```
+
+On décide de regarder la corrélation via le coefficient de corrélation de spearman afin de passer outre la non-linéarité en s'intéressant au rang de nos mesures. Nous retrouvons bien ici la forte corrélation entre ces deux variables.
+
+```{r warning=FALSE}
+cor.test(data$lifeExp, log(data$gdpPercap), method = "spearman")
+```
+
+Il faut cependant garder à l'esprit que les pays d'Afrique étant très nombreux, ce continent a un poids très important dans les statistiques calculées.
+
+```{r echo=FALSE, fig.width=5, fig.height=3, warning=FALSE}
+ggplot(data, aes(x=continent, col=data$continent)) + geom_bar()
+```
