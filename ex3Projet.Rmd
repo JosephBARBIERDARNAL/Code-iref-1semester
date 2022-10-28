@@ -3,12 +3,14 @@ title: "Représentation de données et statistiques multidimensionnelles : \t Ex
 author: "Barbier--Darnal Joseph & Kuentz Léo"
 output:
   html_document:
+    toc: yes
+    toc_float: yes
     df_print: paged
 ---
 
 <br>
 
-# Consigne à partir de la base de données gapminder :
+### Consigne à partir de la base de données gapminder :
 
 > *A rendre seul ou en binôme pour une date limite qui sera indiquée sur Moodle.*
 
@@ -16,7 +18,7 @@ output:
 
 <br>
 
-**Pour des raisons principalement esthétiques, tout le code utilisée n'est pas présenté ici. Pour voir l'entièreté du code, voir ce [Github](https://github.com/JosephBARBIERDARNAL/RDSMTD1ex3).**
+**Pour des raisons de clarté, tout le code utilisé n'est pas présenté ici. Pour voir l'entièreté du code, voir ce [Github](https://github.com/JosephBARBIERDARNAL/Rlecture/blob/main/ex3Projet.Rmd).**
 
 <br>
 
@@ -49,7 +51,7 @@ any(is.na(data)) #check if there are NAs
 
 <br>
 
-Notre objectif principal sera d'explorer nos paramètres de manière *uni* et *multi-variée* ainsi que via l'utilisation de *graphiques*. Dans notre cas, on décide de s'intéresser uniquement aux années suivantes : **1957 et 2002**.
+Notre objectif principal sera d'explorer nos paramètres de manière *uni* et *multi-variée* notamment via l'utilisation de *graphiques*. Dans notre cas, on décide de s'intéresser uniquement aux années suivantes : **1957 et 2002**.
 
 Nous créons également un autre dataset où chaque unité statistique sera un **continent X à une date donnée**. Pour ce dataset, les valeurs des variables numériques seront la **moyenne des pays du continent concerné**.
 
@@ -70,12 +72,13 @@ continent = function(dataset, year){
   #create the new dataset
   data_set = dataset %>%
     group_by(continent, year) %>%
-    mutate(lifexp_m = round(mean(lifeExp), 2),
-           gdp_m = round(mean(gdpPercap), 2),
-           pop_m = round(mean(pop), 2),
-           lifexp_sd = round(sd(lifeExp)*(nr-1)/nr, 2))
+    mutate(lifexp = mean(lifeExp),
+           gdp = mean(gdpPercap),
+           pop = mean(pop),
+           lifexp_sd = sd(lifeExp)*(nr-1)/nr
+           )
   
-  data_set = select(data_set, -c(lifeExp, gdpPercap, pop, country)) #remove useless features
+  data_set = select(data_set, -c(country)) #remove useless feature
   data_set = distinct(data_set) #remove all duplicates 
   
   return(data_set)
@@ -149,6 +152,9 @@ On présente ci-dessous les résultats pour l'année 1957 :
 ```{r echo=FALSE, warning=FALSE}
 #print the results 
 cat("In 1957, the country with the highest gdp/percap was Kuwait with", max_gdp_1957$gdpPercap, "\n")
+
+
+
 cat("In 1957, the country with the highest life expectancy was Iceland with", max_lifeExp_1957$lifeExp, "years old \n")
 cat("In 1957, the country with the highest population was China with", max_pop_1957$pop, "(in thousands) people")
 ```
@@ -165,13 +171,13 @@ cat("In 2002, the country with the highest population was China with", max_pop_2
 
 <br>
 
-## 4 - Quelques graphiques intéressants...
+## 4 - Quelques graphiques intéressants
 
 <br>
 
 **IMPORTANT** \
 
-> Tous les prochains graphiques seront présentés de telle sorte : les graphiques de gauche représentent les pays à l'année 1957 et les graphiques de droite à l'année 2002.
+> Tous les prochains graphiques seront présentés de telle sorte : les graphiques de gauche représentent l'année 1957 et les graphiques de droite l'année 2002.
 
 > Tous les graphiques ont été mis sur la même échelle afin de faciliter la comparaison.
 
@@ -209,7 +215,7 @@ La chose que ces graphiques nous permettent de constater est le fait que l'espé
 
 #### Boxplot du PIB/habitant par continent
 
-Etant donné l'existence de fortes disparités dans le PIB/habitant entre les différents continents, il serai peu pertinent de créer un graphique sur une même échelle. Pour le prochain graphique, nous décidons alors de transformer notre variable PIB/habtiant en z-score, de la manière suivante : 
+Etant donné l'existence de fortes disparités dans le PIB/habitant entre les différents continents, il serai peu pertinent de créer un graphique sur une même échelle. Pour le prochain graphique, nous décidons alors de transformer notre variable PIB/habitant en z-score, de la manière suivante : 
 
 $z_{j,i} = \frac{x_j - \overline{x_i}}{\sigma_i} =$ le score du PIB/habitant du pays j au sein du continent i
 <br>
@@ -256,28 +262,26 @@ ggarrange(plot1, plot2, nrow = 1, common.legend = TRUE)
 
 La chose que ces graphiques nous permettent de constater est le fait que l'Asie a vu sa dispersion fortement augmenter, notamment avec le développement de pays avec un fort relatif PIB/habitant. On peut décider d'investiguer davantage ce phénomène en plotant la distribution du PIB/habitant de l'Asie en 1957 et 2002.
 
-Nous pouvons également essayer de retrouver le pays *outlier* en terme de PIB/habitant en 1957 en Asie, situé à **plus de 5 écart-types** de la moyenne des pays d'Asie.
-
-```{r echo=TRUE}
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=10}
 #subset Asia 
 asia_1957 = subset(data_1957, continent=="Asia")
 asia_2002 = subset(data_2002, continent=="Asia")
 
-asia_1957[which.max(asia_1957$gdpPercap), ]
-```
-
-<br>
-
-On s'intéresse maintenant à la distribution du PIB/habitant de l'Asie en 1957 et 2002 afin d'illustrer le constat précédent.
-
-```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=10}
 plot1 = ggplot(asia_1957) + aes(x=z_gdp, y=..density..) + geom_histogram(col="blue") + geom_density()  + xlab("PIB/habitant (z-score, 1957)") + ylab("Densité")
+
 plot2 = ggplot(asia_2002) + aes(x=z_gdp, y=..density..) + geom_histogram(col="red") + geom_density()  + xlab("PIB/habitant (z-score, 2002)") + ylab("Densité")
 
-ggarrange(plot1, plot2, nrow = 1, common.legend = TRUE) 
+ggarrange(plot1, plot2, nrow = 1) 
 ```
 
-On retrouve bien ici le fait que l'Asie a vu sa distribution du PIB/habitant fortement évoluer entre 1957 et 2002. 
+On retrouve bien ici le fait que l'Asie a vu sa distribution du PIB/habitant fortement évoluer entre 1957 et 2002.
+
+
+Nous pouvons également essayer de retrouver le pays *outlier* en terme de PIB/habitant en 1957 en Asie, situé à **plus de 5 écart-types** de la moyenne des pays d'Asie.
+
+```{r echo=TRUE}
+asia_1957[which.max(asia_1957$gdpPercap), ]
+```
 
 <br>
 
@@ -316,31 +320,31 @@ Cela permet également de mettre en évidence l'évolution moyenne à la fois du
 <br>
 
 ```{r echo=FALSE, fig.width=10}
-plot1 = ggplot(data_continent_1957, aes(x=gdp_m, y=lifexp_m, col=continent)) +
+plot1 = ggplot(data_continent_1957, aes(x=gdp, y=lifexp, col=continent)) +
   geom_point(size=4) +
   ylim(35, 85) +
   ylab("Espérance de vie (en 1957)") +
   xlim(1000, 28000) +
   xlab("PIB/habitant (en 1957)") +
-  geom_errorbar(aes(ymin=lifexp_m-lifexp_sd, ymax=lifexp_m+lifexp_sd), width=.2, position=position_dodge(0.05))
+  geom_errorbar(aes(ymin=lifexp-lifexp_sd, ymax=lifexp+lifexp_sd), width=.2, position=position_dodge(0.05))
   
 
-plot2 = ggplot(data_continent_2002, aes(x=gdp_m, y=lifexp_m, col=continent)) +
+plot2 = ggplot(data_continent_2002, aes(x=gdp, y=lifexp, col=continent)) +
   geom_point(size=4) +
   ylim(35, 85) +
   ylab("Espérance de vie (en 2002)") +
   xlim(1000, 28000) + 
   xlab("PIB/habitant (en 2002)") +
-  geom_errorbar(aes(ymin=lifexp_m-lifexp_sd, ymax=lifexp_m+lifexp_sd), width=.2, position=position_dodge(0.05))
+  geom_errorbar(aes(ymin=lifexp-lifexp_sd, ymax=lifexp+lifexp_sd), width=.2, position=position_dodge(0.05))
 
 ggarrange(plot1, plot2, nrow = 1, common.legend = TRUE) 
 ```
 
 <br>
 
-## 5 - Quelque outil de mesure de relation statistique...
+## 5 - Quelque outil de mesure de relation statistique
 
-On peut s'intéresser au coefficient de corrélation de ces deux paramètres afin d'investiguer davantage leur relation. On décide d'utiliser le coefficient de corrélation de spearman puisque la relation ne semble pas linéaire.
+On peut s'intéresser au coefficient de corrélation de ces deux paramètres afin d'investiguer davantage leur relation. Dans la mesure où la relation ne semble pas linéaire, on décide d'utiliser le coefficient de corrélation de spearman. 
 
 <br>
 
@@ -361,3 +365,16 @@ La corrélation pour l'année 2002 est également très forte (r\>0.86) et toujo
 ```{r warning=FALSE}
 cor.test(data_2002$lifeExp, data_2002$gdpPercap, method = "spearman")
 ```
+
+
+## 6 - Conclusion
+
+
+Ce travail nous a permis d’observer une **nette augmentation entre 1957 et 2002 pour toutes les variables quantitatives étudiées**. En effet, l’espérance de vie a, en moyenne, augmenté de 14 ans (52 en 1957 contre 66 en 2002), tandis que la population moyenne ainsi que le PIB par habitant ont plus que doublé sur la période.
+
+Suite  à cela nous avons investigué plus précisément les différences inter-continentales afin d’obtenir des informations plus visuelles. Cette manipulation nous a notamment permis de distinguer le cas du Koweït, qui apparaît sur le graphique de 1957 comme un outlier en terme de PIB/hab parmi les pays asiatiques et reste pourtant indiscernable parmi les autres en 2002. Nous nous sommes donc documentés sur les possibles raisons de ce déclin et nous constatons 2 éléments déterminants : population du Koweït multipliée par 10 et (donc) **diminution du PIB/habitant d’environ 69% (113523 en 1957 contre 35110 en 2002).** 
+
+Également, nous avons observé une corrélation positive entre le PIB/hab et l’espérance de vie (plus le PIB/hab est élevé, plus l’espérance de vie l’est).
+
+Cependant, ce travail nous montre que les inégalités entre continents **persistent voire augmentent dans le temps**. 
+En effet, en Afrique même si toutes les variables étudiées ont augmenté entre les deux années étudiées, cet effet est moindre quant à celui des autres continents.
