@@ -76,8 +76,6 @@ La variable vitamine A étant de loin la variable avec la plus grande variance i
 
 <br>
 
-On peut aussi calculer la contribution des variables au premier axe :
-
 ***Contribution de chaque variable, en %, au premier axe:***
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
@@ -135,7 +133,7 @@ corrplot(cor(data), bg="azure", tl.srt = 45, tl.col = "deepskyblue4")
 
 <br>
 
-La corrélation entre les nutriments est soit positive ou nulle. On peut remarquer, que globalement, la variable qui mesure la quantité de fibre dans un aliment est très faiblement corrélée avec les autres variables sauf légèrement pour les vitamines B1, B2 et B3. A l'inverse, peu importe la variable étudiée (sauf quantité de fibre), on constate une corrélation avec la quantité de protéine. Enfin, on remarque que les vitamines B1, B2, B3 sont très fortement corrélées. Egalement, ces dernières semblent avoir la même faible corrélation avec les autres nutriments étudiés. 
+La corrélation entre les nutriments est essentiellement positive ou nulle. On peut remarquer, que globalement, la variable qui mesure la quantité de fibre dans un aliment est très faiblement corrélée avec les autres variables, excepté légèrement avec les vitamines B1, B2 et B3. A l'inverse, peu importe la variable étudiée (sauf quantité de fibre), on constate une certaine corrélation avec la quantité de protéine. Enfin, on remarque que les vitamines B1, B2, B3 sont très fortement corrélées entre elles. Egalement, ces dernières semblent avoir la même faible corrélation avec les autres nutriments étudiés. 
 
 <br>
 
@@ -143,7 +141,7 @@ La corrélation entre les nutriments est soit positive ou nulle. On peut remarqu
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=14, fig.height=7}
 #scatter plot of all vitamin pairs
-#ggpairs(data[, 1:9])
+ggpairs(data[, 1:9])
 ```
 
 <br>
@@ -182,7 +180,7 @@ data_without_outliers = drop_na(data)
 
 <br>
 
-##### d) CatSugar
+##### d) Création de la variable CatSugar
 
 <br>
 
@@ -193,14 +191,21 @@ data_without_outliers = drop_na(data)
 quant = quantile(data_without_outliers$Sugar_g, probs = seq(.25, .75, by = .5))
 minimum = min(data_without_outliers$Sugar_g)
 maximum = max(data_without_outliers$Sugar_g)
-breaks_used = c(minimum, quant, maximum)
+breaks_quant = c(minimum, quant, maximum)
+breaks_quant
+```
 
+<br>
+
+***Division de sugar et affichage des boîtes à moustache***
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=10, fig.height=6}
 #create the Catsugar variable
 data_without_outliers$Catsugar = cut(data_without_outliers$Sugar_g,
   include.lowest = TRUE,
   right = FALSE,
   dig.lab = 3,
-  breaks = c(breaks_used),
+  breaks = c(breaks_quant),
   labels = c("low", "medium", "high"))
 
 #plot
@@ -261,18 +266,18 @@ Afin d'avoir une meilleure idée de ce que mesure l'axe 2, on regarde les contri
 ```{r echo=FALSE, message=FALSE, warning=FALSE, fig.height=3}
 #plot contribution of all vitamines to the 2 first axes
 x = t(results$var$contrib[,1:2])
-corrplot(x, is.corr = FALSE, tl.srt = 45, method = "number")
+corrplot(x, is.corr = FALSE, tl.srt = 45, method = "number", tl.col = "darkgoldenrod1")
 ```
 
-Le deuxième axe est composé à presque 56% des vitamines B1, B2 et B3, variables très corrélées. On en déduit qu'un plat ayant beaucoup de ces vitamines sera projeté vers plutôt le haut du plan, et inversement. 
+Le deuxième axe est composé à presque 56% des vitamines B1, B2 et B3, variables très corrélées. On en déduit qu'un plat ayant beaucoup de ces vitamines sera projeté plutôt vers le haut et éventuellement la droite du plan, et inversement. 
 
 Egalement, un plat riche en sucre et/ou en graisse aura tendance à être projeté en bas à droite du plan. Enfin, ces deux dernières variables semblent être corrélées. 
 
 <br>
 
-```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=12}
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=12, fig.height=6}
 #scree graph
-fviz_eig(results, addlabels = TRUE, ylim = c(0, 100),
+fviz_eig(results, addlabels = TRUE, ylim = c(0, 60),
          main = "Graphique des éboulis",
          xlab = "Composante principale",
          ylab = "Pourcentage de variance expliquée")
@@ -309,15 +314,21 @@ ggarrange(plot1, plot2, plot3, ncol = 3)
 
 #### c) Interprétation des points-individus 
 
+<br>
+
+***Projection des individus sur les deux premiers plans factoriels, avec les individus interprétés en marron***
+
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 #code used in order to color only some individuals
 data_with_outliers$ind_interpreted = "No"
 data_with_outliers$ind_interpreted[c(146, 141, 216, 218)] = "Yes"
-results_with_suppind = PCA(data_with_outliers, graph = FALSE, quanti.sup = c(10:13), quali.sup=14)
+results_with_indinter = PCA(data_with_outliers, graph = FALSE, quanti.sup = c(10:13), quali.sup=14)
 
 #show observations projection
-fviz_pca_ind(results_with_suppind, axes = c(1,2), habillage = 14, palette = c("black", "coral3"))
+fviz_pca_ind(results_with_indinter, axes = c(1,2), habillage = 14, palette = c("black", "coral3"))
 ```
+
+<br>
 
 Afin de faciliter l'interprétation des points-individus, on rappelle la moyenne et l'écart-type des variables suivantes :
 
@@ -344,6 +355,7 @@ data_full[146,]
 ```
 On retrouve bien ici le fait qu'un point-individu projeté en haut à droite est un plat contenant une quantité *importante* de protéine, ainsi que des vitamines B1, B2 et B3. Les quantités de gras et de sucre peuvent sembler importantes ce qui aurait dû impliquer une projection plus basse sur le deuxième axe. Or, 13g de gras et 24g de sucre correspondent à moins d'un écart-type en terme de distance à la moyenne (contre, par exemple, plus de 2 écart-types pour la variable vitamine B3). 
 
+<br>
 
 ***Point 141 :***
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -354,7 +366,13 @@ On retrouve alors le fait qu'un point-individu projeté proche de l'origine est 
 
 <br>
 
+Plus généralement, on remarque que les produits 141 et 146 désignent des produits pour bébé. Or, ces derniers sont généralement conçus de telle sorte qu'ils contiennent suffisamment de vitamines et protéines. 
+
+<br>
+
 #### d) Interprétation des points-individus 218 et 216
+
+<br>
 
 ***Point 218 :***
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -363,6 +381,7 @@ data_with_outliers[218,]
 
 On pouvait prévoir que ce plat aurait des quantités importantes de sucre et de gras, ainsi qu'une quantité modérément élevée de protéine et faible de vitamines B1, B2 et B3. En effet, ce plat est projetée en bas à droite du plan. 
 
+<br>
 
 ***Point 216 :***
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -371,8 +390,11 @@ data_with_outliers[216,]
 
 Les plats 216 et 218 sont projetés à proximité sur le plan. Cependant le plat 216 est davantage sur la droite, ce qui se traduit par une quantité plus élévée en protéine, vitamine B1, B2 et B3.
 
+<br>
 
-#### e)
+#### e) Variance des abscisses des points sur le 1er axe factoriel
+
+<br>
 
 ***Méthode 1***
 
@@ -383,6 +405,8 @@ On calcule la variance des coordonnées des points-individus sur le premier axe.
 n = nrow(data_with_outliers)
 var(results$ind$coord[,1]) * (n-1)/n
 ```
+
+<br>
 
 ***Méthode 2***
 
@@ -397,11 +421,13 @@ eigen(cor_matrix)$values[1]
 <br>
 <br>
 
-## C - Inactivation des plats les plus extrêmes.
+## C - Inactivation des plats les plus extrêmes
 
 <br>
 
 #### a) Filtrage des plats
+
+***Sélection des indices à passer en inactifs***
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 #select the index of the observations to remove
@@ -450,17 +476,19 @@ x = t(sort(results$var$contrib[,2], decreasing = TRUE))
 data.frame(x)
 ```
 
+La contribution à l'axe est cependant répartie entre différentes variables. On peut alors dire que cet axe est composé à presque 80% des variables vitamine A, B12, E et B9.
+
 <br>
 <br>
 
 
-## D - Analyse des correspondance multiples sur variables catégorisées. 
+## D - Analyse des correspondance multiples sur variables catégorisées
 
 <br>
 
 ##### a) Construction des modalités pour chaque variable
 
-Afin de séparer chaque variable en 3 modalités (faible, modéré et élevé), on décide d'utiliser comme breaks les quartiles. Cependant, étant donné que ces derniers imposent des effectifs de même taille dans chaque catégorie, il est possible d'avoir des 1ers et 3èmes quartiles égaux. Afin de corriger ce problème, on décide d'ajouter un très léger bruit aux variables initiales, assurant ainsi qu'elles soient toutes différentes.
+Afin de séparer chaque variable en 3 modalités (faible, modéré et élevé), on décide d'utiliser comme breaks les quartiles. Cependant, étant donné que ces derniers imposent des effectifs de même taille dans chaque catégorie, il est possible d'avoir des 1ers et 3èmes quartiles égaux. Afin de corriger ce problème, on décide d'ajouter un très léger bruit gaussien aux variables initiales, assurant ainsi qu'elles soient toutes différentes.
 
 Pour mettre cela en place, on décide de créer une fonction qui prend en argument une variable quantitative, et retourne une nouvelle variable qualitative divisée en 3 modalités dont les breaks sont le 1er et le 3ème quartile. On stock ces résultats dans un nouveau dataframe `data_quali`.
 
@@ -469,7 +497,7 @@ Pour mettre cela en place, on décide de créer une fonction qui prend en argume
 #function that split a variable into 3 modalities according to quantiles
 to_modalities = function(var){
   
-  #add small noise in order to avoid exact same values for quantiles
+  #add small noise in order to avoid exact same values for quartiles
   var = var + rnorm(sd=0.00001, n=length(var))
   
   #look for quartiles 1 and 3, min and max for breaks
@@ -523,10 +551,6 @@ fviz_mca_var(results, choice = "var.cat", repel = TRUE, col.var = "black", col.q
 
 On remarque que les variables modalités sont projetées en 3 clusters, dont chaque cluster tend à représenter une modalité. Ce phénomène ne semble pas être respecté pour la variable fibre. En effet, les 3 modalités prises par fibre sont relativement proches sur le graphique, indiquant une certaine indépendance de la quantité de fibres par rapport aux autres variables. On retrouve ici la conclusion faite lors de l'interprétation de la matrice de corrélation précédemment.
 
-Lorsque l'on s'intéresse aux contributions des variables modalités, on se rend compte que le premier axe tend à être lié au niveau élevé en vitamines, sucre, graisse et protéine. En revanche, le deuxième axe, quant à lui, est davantage lié au niveau moyen et faible de ces mêmes nutriments.
-
-On doit néanmoins garder à l'esprit que la projection sur les 2 premiers axes revient à ne conserver qu'environ 50% de l'information initiale.  
-
 <br>
 
 ***Contributions des variables modalités aux 2 premiers axes***
@@ -535,3 +559,10 @@ On doit néanmoins garder à l'esprit que la projection sur les 2 premiers axes 
 x = results$var$contrib[,1:2]
 data.frame(x)
 ```
+
+<br>
+
+Lorsque l'on s'intéresse aux contributions des variables modalités, on se rend compte que le premier axe tend à être lié au niveau élevé en vitamines, sucre, graisse et protéine. En revanche, le deuxième axe, quant à lui, est davantage lié au niveau moyen et faible de ces mêmes nutriments.
+
+On doit néanmoins garder à l'esprit que la projection sur les 2 premiers axes revient à ne conserver qu'environ 50% de l'information initiale.  
+
