@@ -1,3 +1,2 @@
-# R course
-exercises from my R courses
+code from my master's 1st semester 
 
